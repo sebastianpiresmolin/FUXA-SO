@@ -77,7 +77,7 @@ CHANNELS = {
     "current":      {"min":   0.0,  "max":  16.0,  "drift": 0.10, "dec": 3},
     "motion_count": {"min":   0.0,  "max": 500.0,  "drift": 2.00, "dec": 0},
     "soil_moisture":{"min":   0.0,  "max": 100.0,  "drift": 0.20, "dec": 1},
-    "level":{"min":   0,  "max": 6,  "drift": 0.20, "dec": 1},
+    "level":{"min":   0,  "max": 7,  "drift": 0.20, "dec": 1},
 }
 
 ALL_CHANNELS = list(CHANNELS.keys())
@@ -99,7 +99,7 @@ for dev_eui in DEV_EUIS:
             cfg["min"] + (cfg["max"] - cfg["min"]) * 0.75,
         )
 
-    sensors.append({"devEUI": dev_eui, "channels": channels, "state": state})
+    sensors.append({"devEUI": dev_eui, "channels": channels, "state": state, "level_alerted": False})
 
 # ── Drift one channel value by one step ───────────────────────────────────────
 def drift(channel: str, current: float) -> float:
@@ -164,6 +164,15 @@ try:
 
             topic = f"{TOPIC_PREFIX}/{sensor['devEUI']}"
             client.publish(topic, json.dumps(payload), qos=QOS)
+
+            if "level" in sensor_values:
+                if sensor_values["level"] >= 6 and not sensor["level_alerted"]:
+                    sensor["level_alerted"] = True
+                    breddning_payload = {"alert": "level_high", "deveui": sensor["devEUI"], "level": sensor_values["level"]}
+                    client.publish(f"{TOPIC_PREFIX}/Breddning", json.dumps(breddning_payload), qos=QOS)
+                    print(f"  *** Breddning alert from {sensor['devEUI']} level={sensor_values['level']} ***")
+                elif sensor_values["level"] < 6:
+                    sensor["level_alerted"] = False
 
         elapsed_ms = (time.monotonic() - t0) * 1000
         print(f"Cycle {cycle:5d} | {len(sensors)} msgs | {elapsed_ms:5.1f} ms | {now}")
