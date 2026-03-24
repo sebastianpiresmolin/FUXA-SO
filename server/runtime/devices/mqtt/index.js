@@ -385,8 +385,14 @@ function MQTTclient(_data, _logger, _events, _runtime) {
                                     if (data.tags[id].type === 'json' && data.tags[id].options && data.tags[id].options.subs && data.tags[id].memaddress) {
                                         try {
                                             var subitems = JSON.parse(data.tags[id].rawValue);
-                                            if (!utils.isNullOrUndefined(subitems[data.tags[id].memaddress])) {
-                                                data.tags[id].rawValue = subitems[data.tags[id].memaddress];
+                                            var keys = data.tags[id].memaddress.split('.');
+                                            var resolved = subitems;
+                                            for (var k = 0; k < keys.length; k++) {
+                                                if (utils.isNullOrUndefined(resolved)) break;
+                                                resolved = resolved[keys[k]];
+                                            }
+                                            if (!utils.isNullOrUndefined(resolved)) {
+                                                data.tags[id].rawValue = resolved;
                                             } else {
                                                 data.tags[id].rawValue = oldvalue;
                                             }
